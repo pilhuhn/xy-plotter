@@ -20,13 +20,13 @@
 
 #define MS_PIN PIN_A5
 
-struct work {
+struct workItem{
   int steps;  // total number of steps for this item
   int x;      // steps in x direction
   int y;      // steps in y direction
-} workItem;
+};
 
-work *workItems;
+workItem *workItems;
 int currentItem = 0;
 
 String command;
@@ -41,13 +41,13 @@ int pathPointer;
 char dirPins[] = {4,7};
 char stepPins[] = {3,6};
 
-void printWorkItem(work workItem) {
+void printWorkItem(workItem wItem) {
   Serial.print("steps=");
-  Serial.print(workItem.steps, DEC);
+  Serial.print(wItem.steps, DEC);
   Serial.print(", x=");
-  Serial.print(workItem.x, DEC);
+  Serial.print(wItem.x, DEC);
   Serial.print(", y=");
-  Serial.println( workItem.y, DEC);
+  Serial.println(wItem.y, DEC);
   Serial.flush();
 }
 
@@ -83,9 +83,9 @@ int dx, dy;
 void oneStep() {
   boolean doX, doY;
 
-  work workItem = workItems[currentItem];
+  workItem wItem= workItems[currentItem];
   
-  int totalSteps = workItem.steps;
+  int totalSteps = wItem.steps;
   if (totalSteps <=0 ) {
     Timer1.stop();
     delete[] workItems;
@@ -93,10 +93,10 @@ void oneStep() {
     return;
   }
   if (stepsDone == 0) {
-    printWorkItem(workItem);
-    setDirection(workItem);
-    dx = abs(workItem.x);
-    dy = -abs(workItem.y);
+    printWorkItem(wItem);
+    setDirection(wItem);
+    dx = abs(wItem.x);
+    dy = -abs(wItem.y);
     err = dx+dy;
   }
 
@@ -121,13 +121,13 @@ void oneStep() {
   }
 
   stepsDone++;
-  if (stepsDone > abs(workItem.steps)) {
+  if (stepsDone > abs(wItem.steps)) {
     currentItem++;
     stepsDone = 0;
   }
 }
 
-void setDirection(work item) {
+void setDirection(workItem item) {
   if (item.x > 0) {
     digitalWrite(dirPins[0], HIGH);
   } else {
@@ -186,7 +186,7 @@ void parsePath(String path) {
   Serial.print("Segments: ");
   Serial.println( segments, DEC);
   // allocate memory
-  workItems = new work[segments +1 ];
+  workItems = new workItem[segments +1 ];
 
   // Now parse the segments and create work items
   curPos = 0;
@@ -197,8 +197,8 @@ void parsePath(String path) {
     Serial.print("Found token ");
     Serial.println( token.c_str());
     Serial.flush();
-    work *workItem = parseToken(token);
-    workItems[count++]=*workItem;
+    workItem *wItem= parseToken(token);
+    workItems[count++]=*wItem;
     curPos = pos+1;
   } while(pos >0);
 
@@ -210,7 +210,7 @@ void parsePath(String path) {
   Serial.flush();
 }
 
-work *parseToken(String token) {
+workItem*parseToken(String token) {
   int x = 0;
   int y = 0;
 
@@ -235,14 +235,14 @@ work *parseToken(String token) {
     curPos = pos+1;
   } while(pos>0);
 
-  work *workItem = new work;
-  workItem->x = x * STEPS_PER_MM;
-  workItem->y = y * STEPS_PER_MM;
+  workItem *wItem= new workItem;
+  wItem->x = x * STEPS_PER_MM;
+  wItem->y = y * STEPS_PER_MM;
 
-  workItem->steps = max(abs(workItem->x), abs(workItem->y));
+  wItem->steps = max(abs(wItem->x), abs(wItem->y));
 
 //  printWorkItem(*workItem);
-  return workItem;
+  return wItem;
 }
 
 String findTen() {
@@ -293,7 +293,7 @@ void loop() {
         break;      
       case 'X':
         // TEST to produce a square with 2cm edge length
-        workItems = new work [5];
+        workItems = new workItem[5];
         workItems[0] = {3200,  3200, 0    } ;
         workItems[1] = {3200,     0, 3200 } ;
         workItems[2] = {3200, -3200, 0    } ;
