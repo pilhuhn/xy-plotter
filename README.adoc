@@ -1,0 +1,6 @@
+= XY-Plotter
+
+Software for my plotter, first described at http://pilhuhn.blogspot.com/2018/01/homegrown-xy-plotter-with-arduino.html
+
+
+
