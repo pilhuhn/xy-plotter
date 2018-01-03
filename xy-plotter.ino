@@ -37,12 +37,13 @@ int stepsDone =0 ;
 boolean done;
 long e2, err;
 int pathPointer;
+boolean continuousMode=false;
 
 char dirPins[] = {4,7};
 char stepPins[] = {3,6};
 
 void printWorkItem(workItem wItem) {
-  Serial.print("steps=");
+  Serial.print("D steps=");
   Serial.print(wItem.steps, DEC);
   Serial.print(", x=");
   Serial.print(wItem.x, DEC);
@@ -147,7 +148,7 @@ void startWork() {
   enableMotors();
   done = false;
 
-  Serial.println("Starting...");
+  Serial.println("D Starting...");
   Serial.flush();
 
   Timer1.initialize(500); // 500us
@@ -183,7 +184,7 @@ void parsePath(String path) {
     curPos = pos+1;
   } while (pos > 0);
   
-  Serial.print("Segments: ");
+  Serial.print("D Segments: ");
   Serial.println( segments, DEC);
   // allocate memory
   workItems = new workItem[segments +1 ];
@@ -194,7 +195,7 @@ void parsePath(String path) {
   do {
     pos = path.indexOf('|', curPos);
     String token = sub.substring(curPos,pos);
-    Serial.print("Found token ");
+    Serial.print("D Found token ");
     Serial.println( token.c_str());
     Serial.flush();
     workItem *wItem= parseToken(token);
@@ -204,7 +205,7 @@ void parsePath(String path) {
 
   workItems[count] = { -1, -1, 0};
   long t2 = millis();
-  Serial.print("Parsing took " );
+  Serial.print("D Parsing took " );
   Serial.print(t2-t1, DEC);
   Serial.println(" ms");
   Serial.flush();
@@ -252,15 +253,17 @@ String findTen() {
     if (command.charAt(i) == '|') {
       count++;
     }
-    if (count==5) {
-      Serial.print("f10: pp: ");
+    if (count==8) {
+      Serial.print("D f10: pp: ");
       Serial.println(i, DEC);
+      Serial.flush();
       pathPointer = i+1;
       return command.substring(curr,i);
     }
   }
-  Serial.print("f10: count: ");
+  Serial.print("D f10: count: ");
   Serial.println(count, DEC);
+  Serial.flush();
   // We did not hit 10, so return the whole string's end
   pathPointer = -1; // Mark end
   return command.substring(curr);
@@ -270,67 +273,90 @@ void loop() {
 
   if (Serial.available() > 0) {
     command = Serial.readStringUntil('\n');
+    Serial.print("D ");
     Serial.println(command.c_str());    
     Serial.flush();
-//    if (command.length() < 1) {
-//      continue;
-//    }
-    char c = command.charAt(0);
-    switch (c) {
-      case 'E':
-        enableMotors();
-        break;
-      case 'D':
-        disableMotors();
-        break;
-      case 's':
-      {
-        String in = command.substring(1);
-        in.replace('\n','|');
-        parsePath(in);
-        startWork();
-      }
-        break;      
-      case 'X':
-        // TEST to produce a square with 2cm edge length
-        workItems = new workItem[5];
-        workItems[0] = {3200,  3200, 0    } ;
-        workItems[1] = {3200,     0, 3200 } ;
-        workItems[2] = {3200, -3200, 0    } ;
-        workItems[3] = {3200,     0, -3200} ;
-        workItems[4] = {  -1, -1, -1      } ; // guard
-        startWork();
-        break;
 
-      case 'G':
-        // Test for a path with square and triangles
-      {
-        String path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
-        
-        parsePath(path);
-        
-        startWork();
-      }
-      break; 
-      case 'Q':
-        // Emergency shutdown
-        Timer1.stop();
-        Serial.println("STOPPED");
+    if (continuousMode) {
+      // we read line by line from serial input and feed it to parser+worker
+      // until the line starts with -END
+      if (command.startsWith("-END")) {
         done=true;
-      break;  
-      case 'T': {
-        // Split the path in smaller items and handle them one at a time
-        command.replace('\n','|');
-        pathPointer = 1; // comand[0] is 'T, path starts at 1
+        continuousMode=false;
+        Serial.println("D END found, continuous mode off");
+        Serial.flush();
+      }
+      else {
+        pathPointer = 0;
         String path = findTen();
-        Serial.println(path);
         parsePath(path);
         startWork();
-        
       }
-      break;
-        
-    } // switch
+    }
+    else {
+      // we get commands on the command line - possibly with parameters
+      char c = command.charAt(0);
+      switch (c) {
+        case 'E':
+          enableMotors();
+          break;
+        case 'D':
+          disableMotors();
+          break;
+        case 's':
+        {
+          String in = command.substring(1);
+          in.replace('\n','|');
+          parsePath(in);
+          startWork();
+        }
+          break;      
+        case 'X':
+        {
+          // TEST to produce a square with 2cm edge length
+          workItems = new workItem[5];
+          workItems[0] = {3200,  3200, 0    } ;
+          workItems[1] = {3200,     0, 3200 } ;
+          workItems[2] = {3200, -3200, 0    } ;
+          workItems[3] = {3200,     0, -3200} ;
+          workItems[4] = {  -1, -1, -1      } ; // guard
+          startWork();
+          break;
+        }
+        case 'G':
+          // Test for a path with square and triangles
+        {
+          String path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
+          
+          parsePath(path);
+          
+          startWork();
+        }
+        break; 
+        case 'Q':
+          // Emergency shutdown
+          Timer1.stop();
+          Serial.println("STOPPED");
+          done=true;
+        break;  
+        case 'T': {
+          // Split the path in smaller items and handle them one at a time
+          command.replace('\n','|');
+          pathPointer = 1; // comand[0] is 'T, path starts at 1
+          String path = findTen();
+          Serial.println(path);
+          parsePath(path);
+          startWork();
+        }
+        break;
+        case 'C': {
+          continuousMode = true;
+          Serial.println("D Continuous mode is on");
+          Serial.flush();
+          break;
+        }
+      } // switch
+    } // if (!continuous mode)
   } // if serial
 
   if (done) {
@@ -346,10 +372,12 @@ void loop() {
       startWork();
     }
     else {
-    
-      Serial.println("DONE, disabling motors");
+      if (!continuousMode) {
+        Serial.println("D DONE, disabling motors");
+        disableMotors();
+      }
+      Serial.println("OK");
       Serial.flush();
-      disableMotors();
     }
   }
 }
