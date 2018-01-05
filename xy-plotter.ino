@@ -38,6 +38,8 @@ boolean done;
 long e2, err;
 int pathPointer;
 boolean continuousMode=false;
+int tokenCount;
+boolean dryRun = false;
 
 char dirPins[] = {4,7};
 char stepPins[] = {3,6};
@@ -51,6 +53,7 @@ void printWorkItem(workItem wItem) {
   Serial.println(wItem.y, DEC);
   Serial.flush();
 }
+
 
 void setup() {
 
@@ -76,7 +79,10 @@ void setup() {
   digitalWrite(dirPin2, HIGH); 
   digitalWrite(enPin2, HIGH); // Disable stepper
 
-  Serial.println("Setup done");
+  Serial.println();
+  Serial.flush();
+  Serial.println("OK Setup done");
+  Serial.flush();
 }
 
 int dx, dy;
@@ -101,24 +107,26 @@ void oneStep() {
     err = dx+dy;
   }
 
-  // Bessenham algorithm from wikipedia
-  e2 = 2*err;
-  if (e2 > dy) {
-    digitalWrite(stepPins[0],HIGH);
-    err += dy;
-    doX=true;
-  }
-  if (e2 < dx) {
-    digitalWrite(stepPins[1],HIGH);
-    err += dx;
-    doY=true;
-  }
-  delayMicroseconds(30);
-  if (doX) {
-    digitalWrite(stepPins[0],LOW);
-  }
-  if (doY) {
-    digitalWrite(stepPins[1],LOW);
+  if (!dryRun) {
+    // Bessenham algorithm from wikipedia
+    e2 = 2*err;
+    if (e2 > dy) {
+      digitalWrite(stepPins[0],HIGH);
+      err += dy;
+      doX=true;
+    }
+    if (e2 < dx) {
+      digitalWrite(stepPins[1],HIGH);
+      err += dx;
+      doY=true;
+    }
+    delayMicroseconds(30);
+    if (doX) {
+      digitalWrite(stepPins[0],LOW);
+    }
+    if (doY) {
+      digitalWrite(stepPins[1],LOW);
+    }
   }
 
   stepsDone++;
@@ -129,17 +137,19 @@ void oneStep() {
 }
 
 void setDirection(workItem item) {
-  if (item.x > 0) {
-    digitalWrite(dirPins[0], HIGH);
-  } else {
-    digitalWrite(dirPins[0], LOW);
+  if (!dryRun) {
+    if (item.x > 0) {
+      digitalWrite(dirPins[0], HIGH);
+    } else {
+      digitalWrite(dirPins[0], LOW);
+    }
+    if (item.y > 0) {
+      digitalWrite(dirPins[1], LOW);
+    } else {
+      digitalWrite(dirPins[1], HIGH);
+    }
+    delayMicroseconds(100);
   }
-  if (item.y > 0) {
-    digitalWrite(dirPins[1], LOW);
-  } else {
-    digitalWrite(dirPins[1], HIGH);
-  }
-  delayMicroseconds(100);
 }
 
 void startWork() {
@@ -151,7 +161,11 @@ void startWork() {
   Serial.println("D Starting...");
   Serial.flush();
 
-  Timer1.initialize(500); // 500us
+  if (dryRun) {
+    Timer1.initialize(100); // No motor movement, so we can speed up
+  } else {
+    Timer1.initialize(500); // 500us
+  }
   Timer1.attachInterrupt(oneStep);
 }
 
@@ -192,16 +206,25 @@ void parsePath(String path) {
   // Now parse the segments and create work items
   curPos = 0;
   int count = 0;
-  do {
-    pos = path.indexOf('|', curPos);
-    String token = sub.substring(curPos,pos);
-    Serial.print("D Found token ");
-    Serial.println( token.c_str());
-    Serial.flush();
-    workItem *wItem= parseToken(token);
-    workItems[count++]=*wItem;
-    curPos = pos+1;
-  } while(pos >0);
+  if (segments>0) {
+    do {
+      String token;
+      pos = path.indexOf('|', curPos);
+      if (pos != -1) {
+        token = sub.substring(curPos,pos);
+      } else {
+        token = sub.substring(curPos);
+      }
+      Serial.print("D Found token >>");
+      Serial.print( token.c_str());
+      Serial.println("<<");
+      Serial.flush();
+      workItem *wItem= parseToken(token);
+      workItems[count++]=*wItem;
+      tokenCount++;
+      curPos = pos+1; // skip over |
+    } while(pos >0);
+  }
 
   workItems[count] = { -1, -1, 0};
   long t2 = millis();
@@ -218,6 +241,9 @@ workItem*parseToken(String token) {
   int pos ;
   int curPos = 0;
   String sub = token;
+
+  unsigned long t1 = micros();
+  
   do {
     char v = sub.charAt(curPos);
     curPos++;
@@ -242,14 +268,18 @@ workItem*parseToken(String token) {
 
   wItem->steps = max(abs(wItem->x), abs(wItem->y));
 
-//  printWorkItem(*workItem);
+  unsigned long t2 = micros();
+  Serial.print("D     parseToken: ");
+  Serial.println(t2-t1, DEC);
+  
+  printWorkItem(*wItem);
   return wItem;
 }
 
 String findTen() {
   int curr = pathPointer;
   int count=0;
-  for (int i = pathPointer; i < command.length(); i++) {
+  for (unsigned int i = pathPointer; i < command.length(); i++) {
     if (command.charAt(i) == '|') {
       count++;
     }
@@ -283,7 +313,10 @@ void loop() {
       if (command.startsWith("-END")) {
         done=true;
         continuousMode=false;
+        dryRun=false;
         Serial.println("D END found, continuous mode off");
+        Serial.print("D Tokens processed: ");
+        Serial.println(tokenCount, DEC);
         Serial.flush();
       }
       else {
@@ -351,7 +384,12 @@ void loop() {
         break;
         case 'C': {
           continuousMode = true;
-          Serial.println("D Continuous mode is on");
+          Serial.print("OK Continuous mode is on");
+          if (command.length() >1) {
+            dryRun = true;
+            Serial.print(", dryRun is on ");
+          }
+          Serial.println();
           Serial.flush();
           break;
         }
