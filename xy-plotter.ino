@@ -18,12 +18,13 @@
 #define stepPin2 6
 #define dirPin2 7
 
-#define MS_PIN PIN_A5
-
+// A work item is a single "relative" line, resolved into steps
 struct workItem{
   int steps;  // total number of steps for this item
   int x;      // steps in x direction
   int y;      // steps in y direction
+  int ox; // original x from command
+  int oy; // original y from command
 };
 
 workItem *workItems;
@@ -44,29 +45,15 @@ boolean dryRun = false;
 char dirPins[] = {4,7};
 char stepPins[] = {3,6};
 
-void printWorkItem(workItem wItem) {
-  Serial.print("D steps=");
-  Serial.print(wItem.steps, DEC);
-  Serial.print(", x=");
-  Serial.print(wItem.x, DEC);
-  Serial.print(", y=");
-  Serial.println(wItem.y, DEC);
-  Serial.flush();
-}
-
 
 void setup() {
 
   Serial.begin(115200);
 
-  pinMode(MS_PIN, OUTPUT);
-
-
   pinMode(enPin1, OUTPUT);
   pinMode(stepPin1, OUTPUT);
   pinMode(dirPin1, OUTPUT);
   digitalWrite(enPin1, LOW);
-
 
   pinMode(enPin2, OUTPUT);
   pinMode(stepPin2, OUTPUT);
@@ -136,26 +123,13 @@ void oneStep() {
   }
 }
 
-void setDirection(workItem item) {
-  if (!dryRun) {
-    if (item.x > 0) {
-      digitalWrite(dirPins[0], HIGH);
-    } else {
-      digitalWrite(dirPins[0], LOW);
-    }
-    if (item.y > 0) {
-      digitalWrite(dirPins[1], LOW);
-    } else {
-      digitalWrite(dirPins[1], HIGH);
-    }
-    delayMicroseconds(100);
-  }
-}
 
 void startWork() {
   currentItem=0;
   stepsDone = 0;
-  enableMotors();
+  if(!dryRun) {
+    enableMotors();
+  }
   done = false;
 
   Serial.println("D Starting...");
@@ -183,6 +157,7 @@ void startWork() {
  * "X50\nY50\nX-50 Y-50"; 
  */
 void parsePath(String path) {
+  
   long t1 = millis();
   path.trim();
   String sub = path;
@@ -201,7 +176,7 @@ void parsePath(String path) {
   Serial.print("D Segments: ");
   Serial.println( segments, DEC);
   // allocate memory
-  workItems = new workItem[segments +1 ];
+  workItems = new workItem[segments +1];
 
   // Now parse the segments and create work items
   curPos = 0;
@@ -219,8 +194,7 @@ void parsePath(String path) {
       Serial.print( token.c_str());
       Serial.println("<<");
       Serial.flush();
-      workItem *wItem= parseToken(token);
-      workItems[count++]=*wItem;
+      parseToken(token, &workItems[count++]);
       tokenCount++;
       curPos = pos+1; // skip over |
     } while(pos >0);
@@ -232,9 +206,10 @@ void parsePath(String path) {
   Serial.print(t2-t1, DEC);
   Serial.println(" ms");
   Serial.flush();
+
 }
 
-workItem*parseToken(String token) {
+void parseToken(String token, workItem *wItem) {
   int x = 0;
   int y = 0;
 
@@ -262,7 +237,8 @@ workItem*parseToken(String token) {
     curPos = pos+1;
   } while(pos>0);
 
-  workItem *wItem= new workItem;
+  wItem->ox = x;
+  wItem->oy = y;
   wItem->x = x * STEPS_PER_MM;
   wItem->y = y * STEPS_PER_MM;
 
@@ -273,7 +249,6 @@ workItem*parseToken(String token) {
   Serial.println(t2-t1, DEC);
   
   printWorkItem(*wItem);
-  return wItem;
 }
 
 String findTen() {
@@ -297,6 +272,21 @@ String findTen() {
   // We did not hit 10, so return the whole string's end
   pathPointer = -1; // Mark end
   return command.substring(curr);
+}
+
+void d(String path) {
+  Serial.println(" ---> " + path);
+  Serial.flush();
+  parsePath(path);
+//  startWork();
+  int i = 0;
+  while(workItems[i].steps > 0) {
+    printWorkItem(workItems[i]);
+    i++;
+  }
+  delete[] workItems;
+  Serial.println("---------------------");
+  Serial.flush();
 }
 
 void loop() {
@@ -359,10 +349,43 @@ void loop() {
         case 'G':
           // Test for a path with square and triangles
         {
-          String path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
+          dryRun = true;
+          String path = "X30";
+          d(path);
           
-          parsePath(path);
+          path = "X30|Y30";
+          d(path);
           
+          path = "X30|Y30|";
+          d(path);
+          
+          path = "Y30|X30";
+d(path);
+
+          path = "Y30 X30";
+d(path);
+
+          path = "Y-30 X-30";
+d(path);
+          
+          path = "X30|Y30|X-30 Y-30|X-20";
+d(path);          
+          
+          path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25";
+d(path);
+
+          path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
+d(path);
+          path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
+d(path);
+          path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
+d(path);
+          path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
+d(path);
+
+          path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25|X3|X-3|Y3|Y-3";
+d(path);
+
           startWork();
         }
         break; 
