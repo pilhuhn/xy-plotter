@@ -74,6 +74,10 @@ void setup() {
 
 int dx, dy;
 
+// Does the work and is driven from the
+// timer interrrupts. 
+// This function is called each time the Time1
+// fires.
 void oneStep() {
   boolean doX, doY;
 
@@ -86,6 +90,7 @@ void oneStep() {
     done=true;
     return;
   }
+  
   if (stepsDone == 0) {
     printWorkItem(wItem);
     setDirection(wItem);
@@ -157,8 +162,10 @@ void startWork() {
  * "X50\nY50\nX-50 Y-50"; 
  */
 void parsePath(String path) {
-  
+
+#ifdef DEBUG  
   long t1 = millis();
+#endif  
   path.trim();
   String sub = path;
 
@@ -190,10 +197,12 @@ void parsePath(String path) {
       } else {
         token = sub.substring(curPos);
       }
+#ifdef DEBUG      
       Serial.print("D Found token >>");
       Serial.print( token.c_str());
       Serial.println("<<");
       Serial.flush();
+#endif      
       parseToken(token, &workItems[count++]);
       tokenCount++;
       curPos = pos+1; // skip over |
@@ -201,11 +210,14 @@ void parsePath(String path) {
   }
 
   workItems[count] = { -1, -1, 0};
+
+#ifdef DEBUG  
   long t2 = millis();
   Serial.print("D Parsing took " );
   Serial.print(t2-t1, DEC);
   Serial.println(" ms");
   Serial.flush();
+#endif  
 
 }
 
@@ -217,7 +229,9 @@ void parseToken(String token, workItem *wItem) {
   int curPos = 0;
   String sub = token;
 
+#ifdef DEBUG
   unsigned long t1 = micros();
+#endif  
   
   do {
     char v = sub.charAt(curPos);
@@ -244,9 +258,12 @@ void parseToken(String token, workItem *wItem) {
 
   wItem->steps = max(abs(wItem->x), abs(wItem->y));
 
+#ifdef DEBUG 
   unsigned long t2 = micros();
+ 
   Serial.print("D     parseToken: ");
   Serial.println(t2-t1, DEC);
+#endif  
   
   printWorkItem(*wItem);
 }
@@ -274,6 +291,7 @@ String findTen() {
   return command.substring(curr);
 }
 
+#ifdef DEBUG
 void d(String path) {
   Serial.println(" ---> " + path);
   Serial.flush();
@@ -288,6 +306,11 @@ void d(String path) {
   Serial.println("---------------------");
   Serial.flush();
 }
+#else
+void d(String path) 
+{ 
+}
+#endif
 
 void loop() {
 
@@ -349,8 +372,10 @@ void loop() {
         case 'G':
           // Test for a path with square and triangles
         {
+          String path; 
+#ifdef DEBUG          
           dryRun = true;
-          String path = "X30";
+          path = "X30";
           d(path);
           
           path = "X30|Y30";
@@ -382,7 +407,7 @@ d(path);
 d(path);
           path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25";
 d(path);
-
+#endif
           path = "X30|Y30|X-30 Y-30|X-20|Y-20|X20|Y20|X-40|Y-25|X40 Y25|X3|X-3|Y3|Y-3";
 d(path);
 

@@ -26,6 +26,7 @@ void setDirection(workItem item) {
 }
 
 void printWorkItem(workItem wItem) {
+#ifdef DEBUG  
   Serial.print("D steps=");
   Serial.print(wItem.steps, DEC);
   Serial.print(", x=");
@@ -38,4 +39,5 @@ void printWorkItem(workItem wItem) {
   Serial.println(wItem.oy, DEC);
 
   Serial.flush();
+#endif  
 }
