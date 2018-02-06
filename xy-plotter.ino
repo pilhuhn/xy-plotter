@@ -6,45 +6,59 @@
  */
 #define STEPS_PER_MM 80
 
+#define DEBUG
+
 #include "TimerOne.h"
 
-// Stepper 1 = x-axis
-#define enPin1 2
-#define stepPin1 3
-#define dirPin1 4
+#define xInterruptPin 2
+#define yInterruptPin 3
 
-// Stepper 2 = y-axis
-#define enPin2 5
-#define stepPin2 6
-#define dirPin2 7
+// Stepper 2 = x-axis = Motor 2 on shield
+#define enPin1 5
+#define stepPin1 6
+#define dirPin1 7
+
+// Stepper 2 = y-axis = motor 3 on shield
+#define enPin2 11
+#define stepPin2 12
+#define dirPin2 13
+
+// Servo
+#define SERVO_PIN PIN_A1
+#define PEN_UP 10
+#define PEN_DOWN 70
+
+// LED pin
+#define LED_PIN PIN_A3
 
 // A work item is a single "relative" line, resolved into steps
 struct workItem{
-  int steps;  // total number of steps for this item
-  int x;      // steps in x direction
-  int y;      // steps in y direction
-  int ox; // original x from command
-  int oy; // original y from command
+  long steps;  // total number of steps for this item
+  long x;      // steps in x direction
+  long y;      // steps in y direction
+  long ox; // original x from command
+  long oy; // original y from command
 };
 
 workItem *workItems;
 int currentItem = 0;
 
 String command;
-int stepCount;
+long stepCount;
 char dir;
 int motor;
-int stepsDone =0 ;
+long stepsDone =0 ;
 boolean done;
 long e2, err;
 int pathPointer;
 boolean continuousMode=false;
 int tokenCount;
 boolean dryRun = false;
+boolean xHit = false;
+boolean yHit = false;
 
-char dirPins[] = {4,7};
-char stepPins[] = {3,6};
-
+char dirPins[] = {7,13};
+char stepPins[] = {6,12};
 
 void setup() {
 
@@ -66,13 +80,26 @@ void setup() {
   digitalWrite(dirPin2, HIGH); 
   digitalWrite(enPin2, HIGH); // Disable stepper
 
+  // Interrupt if the pin goes to GND
+  pinMode(xInterruptPin, INPUT_PULLUP);
+  pinMode(yInterruptPin, INPUT_PULLUP);
+
+  // Attach to servo and raise pen
+  pinMode(SERVO_PIN, OUTPUT);
+  servoMove(SERVO_PIN, PEN_UP);
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
   Serial.println();
   Serial.flush();
   Serial.println("OK Setup done");
   Serial.flush();
+
+  
 }
 
-int dx, dy;
+long dx, dy;
 
 // Does the work and is driven from the
 // timer interrrupts. 
@@ -83,9 +110,10 @@ void oneStep() {
 
   workItem wItem= workItems[currentItem];
   
-  int totalSteps = wItem.steps;
+  long totalSteps = wItem.steps;
   if (totalSteps <=0 ) {
     Timer1.stop();
+    Timer1.detachInterrupt();
     delete[] workItems;
     done=true;
     return;
@@ -102,12 +130,12 @@ void oneStep() {
   if (!dryRun) {
     // Bessenham algorithm from wikipedia
     e2 = 2*err;
-    if (e2 > dy) {
+    if (e2 > dy && !xHit) {
       digitalWrite(stepPins[0],HIGH);
       err += dy;
       doX=true;
     }
-    if (e2 < dx) {
+    if (e2 < dx && !yHit) {
       digitalWrite(stepPins[1],HIGH);
       err += dx;
       doY=true;
@@ -128,9 +156,22 @@ void oneStep() {
   }
 }
 
+void interruptOnX() {
+  xHit = true;
+  Serial.println("xhit"); 
+  Serial.flush();
+}
+
+void interruptOnY() {
+  yHit = true;
+  Serial.println("yhit"); 
+  Serial.flush();
+
+}
 
 void startWork() {
   currentItem=0;
+  xHit = yHit = false;
   stepsDone = 0;
   if(!dryRun) {
     enableMotors();
@@ -140,10 +181,11 @@ void startWork() {
   Serial.println("D Starting...");
   Serial.flush();
 
+  // Start interrupts. Values are in micro-seconds
   if (dryRun) {
     Timer1.initialize(100); // No motor movement, so we can speed up
   } else {
-    Timer1.initialize(500); // 500us
+    Timer1.initialize(300); 
   }
   Timer1.attachInterrupt(oneStep);
 }
@@ -222,8 +264,8 @@ void parsePath(String path) {
 }
 
 void parseToken(String token, workItem *wItem) {
-  int x = 0;
-  int y = 0;
+  long x = 0;
+  long y = 0;
 
   int pos ;
   int curPos = 0;
@@ -236,7 +278,7 @@ void parseToken(String token, workItem *wItem) {
   do {
     char v = sub.charAt(curPos);
     curPos++;
-    int val;
+    long val;
     pos = token.indexOf(' ',curPos);
     if (pos > 0) {
       val = token.substring(curPos,pos).toInt();
@@ -415,7 +457,7 @@ d(path);
         }
         break; 
         case 'Q':
-          // Emergency shutdown
+          // Emergency shutdown for manual operation
           Timer1.stop();
           Serial.println("STOPPED");
           done=true;
@@ -433,13 +475,64 @@ d(path);
         case 'C': {
           continuousMode = true;
           Serial.print("OK Continuous mode is on");
-          if (command.length() >1) {
+          if (command.length() >2) {
             dryRun = true;
             Serial.print(", dryRun is on ");
           }
           Serial.println();
           Serial.flush();
           break;
+        }
+        case 'H': {
+          // Home, requires interrupts and end-switches
+          String path = "X-300|Y-300";
+          parsePath(path);
+          startWork();
+        }
+        break;
+        case 'u': {
+          // Pen up
+//          penServo.write(PEN_UP);
+          servoMove(SERVO_PIN, PEN_UP);
+          Serial.println("OK pen up");
+          Serial.flush();
+        }
+        break;
+        case 'd': {
+          // Pen down
+//          penServo.write(PEN_DOWN);
+          servoMove(SERVO_PIN, PEN_DOWN);
+          Serial.println("OK pen down");
+          Serial.flush();
+
+        }
+        break;
+        case 'v': {
+          int val = command.substring(1).toInt();
+//          penServo.write(val);
+          servoMove(SERVO_PIN, val);
+          break;
+        }
+        case 'i': {
+          // Prellt wie die Sau mit LOW
+          attachInterrupt(digitalPinToInterrupt(xInterruptPin), interruptOnX , CHANGE);
+          attachInterrupt(digitalPinToInterrupt(yInterruptPin), interruptOnY, CHANGE);
+          Serial.println("Interrupts attached");
+          Serial.flush();
+        }
+        break;
+        case 'I': {
+          detachInterrupt(digitalPinToInterrupt(xInterruptPin));
+          detachInterrupt(digitalPinToInterrupt(yInterruptPin));
+          Serial.println("Interrupts detached");
+          Serial.flush();
+        }
+        break;
+        default: {
+          Serial.print("Unknown command >>");
+          Serial.print(c);
+          Serial.println("<<");
+          Serial.flush();
         }
       } // switch
     } // if (!continuous mode)

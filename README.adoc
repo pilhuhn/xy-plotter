@@ -2,5 +2,70 @@
 
 Software for my plotter, first described at http://pilhuhn.blogspot.com/2018/01/homegrown-xy-plotter-with-arduino.html
 
+The plotter waits on its serial interface for commands.
+
+Currently implemented commands are
+
+* s : manual mode. Pass in a path definition to make the plotter move.
+* E : enable the motors
+* D : disable the motors
+* X,G : some test modes
+* C : continuous mode: see below
+* H : Go home - sets the plotter to its defined home point
+* u : pen up, raises the pen so that it does not draw
+* d : pen down, lowers the pen so that it draws
+
+== Path definition
+
+Path commands are relative movements from the current position of the print head.
+The format follows:
+
+----
+    PIPE::= '|'
+    SPACE ::= ' '
+    XCHAR ::= 'X'
+    YCHAR ::= 'Y'
+    MINUS ::= '-'
+    NUM ::= ['0'-'9']
+
+    item ::= (XCHAR | YCHAR) MINUS? NUM+
+    segment ::= item (SPACE item)
+    path ::= segment ( PIPE segment)*
+----
+
+where 'n' is a numeric digit.
+
+Examples: 
+
+* X30 - move 30 units on the X-axis
+* Y-2 - move -2 units on the Y-axis
+* X10 Y5 - move 10 units on the X-axis and also 5 units on the y-axis
+* X2 Y2|X-2 - first move 2 units on the X-axis and 2 on the y-axis. Then move -2 units on the X-axis
+
+The units depend on the setting of the plotter. In my case 1 unit = 1mm.
+
+== Continuous mode
+
+With the 's' command, the plotter expects one path definition, does the work and waits for a new command.
+
+With continuous mode, the plotter only expects path segments after continuous mode was enabled.
+It processes the segments and then reads the next path from serial input.
+If it encounters `-END` it will stop and exit continuous mode.
+
+.Example to display the start of a Hilbert curve
+----
+C
+X4 Y0|X0 Y4|X-4 Y0|X0 Y4|X0 Y4|X4 Y0|X0 Y-4
+X4 Y0|X0 Y4|X4 Y0|X0 Y-4|X0 Y-4|X-4 Y0|X0 Y-4
+-END
+----
+
+== Plotter responses
+
+The plotter responds with vaious kind of data.
+If it waits for more input it will reply with a text starting with `OK`.
+Debug output starts with `D`.
+If the plotter encounters an error it will repyl with `ERR`.
+
 
 

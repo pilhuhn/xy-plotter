@@ -21,7 +21,23 @@ void setDirection(workItem item) {
     } else {
       digitalWrite(dirPins[1], HIGH);
     }
-    delayMicroseconds(100);
+    delayMicroseconds(150);
+  }
+}
+
+void servoMove(int servo, int pos){
+  int pwm;
+  // Create millis for HIGH duration 
+  pwm = (pos * 11) + 544; 
+
+  // Iterate a few times to give the servo a chance
+  // for its arm to move
+  for (int i = 0; i < 35 ; i++) {
+    // One signal round is 20ms
+    digitalWrite(servo, HIGH);
+    delayMicroseconds(pwm);
+    digitalWrite(servo, LOW);
+    delayMicroseconds(20000);
   }
 }
 
