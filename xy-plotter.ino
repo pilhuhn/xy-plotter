@@ -31,13 +31,19 @@
 // LED pin
 #define LED_PIN PIN_A3
 
+// Tasks
+#define TASK_MOVE 1
+#define TASK_PEN_UP 2
+#define TASK_PEN_DOWN 3
+
 // A work item is a single "relative" line, resolved into steps
 struct workItem{
   long steps;  // total number of steps for this item
   long x;      // steps in x direction
   long y;      // steps in y direction
-  long ox; // original x from command
-  long oy; // original y from command
+  int ox; // original x from command
+  int oy; // original y from command
+  byte task; 
 };
 
 workItem *workItems;
@@ -109,7 +115,19 @@ void oneStep() {
   boolean doX, doY;
 
   workItem wItem= workItems[currentItem];
-  
+
+  if (wItem.task == TASK_PEN_UP) {
+    servoMove(SERVO_PIN, PEN_UP);
+    currentItem++;
+    return;
+  } 
+  if (wItem.task == TASK_PEN_DOWN) {
+    servoMove(SERVO_PIN, PEN_DOWN);
+    currentItem++;
+    return;
+  }
+
+  // This must be TASK_MOVE
   long totalSteps = wItem.steps;
   if (totalSteps <=0 ) {
     Timer1.stop();
@@ -287,8 +305,18 @@ void parseToken(String token, workItem *wItem) {
     }
     if (v == 'X') {
       x = val;
-    } else {
+      wItem->task = TASK_MOVE;
+    } else if (v == 'Y') {
       y = val;
+      wItem->task = TASK_MOVE;
+    } else if (v == 'U') {
+      wItem->task = TASK_PEN_UP;
+    } else if (v == 'D') {
+      wItem->task = TASK_PEN_DOWN;
+    } else {
+      Serial.print("E  unknown code ");
+      Serial.println(v);
+      Serial.flush();
     }
     curPos = pos+1;
   } while(pos>0);

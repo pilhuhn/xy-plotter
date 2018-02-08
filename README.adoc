@@ -27,9 +27,12 @@ The format follows:
     YCHAR ::= 'Y'
     MINUS ::= '-'
     NUM ::= ['0'-'9']
+    PEN_UP ::= 'U'
+    PEN_DOWN ::= 'D'
 
     item ::= (XCHAR | YCHAR) MINUS? NUM+
-    segment ::= item (SPACE item)
+    move ::= item (SPACE item)
+    segment ::= move | PEN_UP | PEN_DOWN
     path ::= segment ( PIPE segment)*
 ----
 
