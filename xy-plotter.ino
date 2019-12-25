@@ -484,18 +484,6 @@ void loop() {
             startWork();
           }
           break;
-        case 'X':
-          {
-            // TEST to produce a square with 2cm edge length
-            workItems = new workItem[5];
-            workItems[0] = {3200,  3200, 0     , 0, 0, TASK_MOVE} ;
-            workItems[1] = {3200,     0, 3200  , 0, 0, TASK_MOVE} ;
-            workItems[2] = {3200, -3200, 0     , 0, 0, TASK_MOVE} ;
-            workItems[3] = {3200,     0, -3200 , 0, 0, TASK_MOVE} ;
-            workItems[4] = {  -1, -1, -1       , 0, 0, TASK_MOVE} ; // guard
-            startWork();
-            break;
-          }
         case 'Q':
           // Emergency shutdown for manual operation
           panic();

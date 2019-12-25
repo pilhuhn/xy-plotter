@@ -9,11 +9,17 @@ Currently implemented commands are
 * s : manual mode. Pass in a path definition to make the plotter move.
 * E : enable the motors
 * D : disable the motors
-* X,G : some test modes
 * C : continuous mode: see below
 * H : Go home - sets the plotter to its defined home point
 * u : pen up, raises the pen so that it does not draw
 * d : pen down, lowers the pen so that it draws
+* r<val>: set resolution to _val_ steps per mm. Default is 160steps per mm
+* Q : emergency stop in manual mode
+* T : some path debugging
+* v<val> : set servo at passed int _val_ue
+* i : enable end switches
+* I : disable interrupts
+* z<c><val>: send z-Axis command _c_ with value _val_. See zAxis.ino for more info
 
 == Path definition
 
