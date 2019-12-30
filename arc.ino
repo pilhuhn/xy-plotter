@@ -52,7 +52,7 @@ void handleArc(char c, String command)
     // TODO: decide (via param) if previous point is middle point
     //    or start point        
     // Loop 
-    for (int deg = start; deg < end ; deg++) {  // TODO handle direction
+    for (int deg = start; deg <= end ; deg++) {  // TODO handle direction
         // TODO handle negative values and start > end and values > 360            
 
         // determine x and y depending on quadrant
@@ -98,7 +98,7 @@ void handleArc(char c, String command)
         signed long x = ( radius * mcos * stepsPerMM) / 10000;
         signed long y = ( radius * msin * stepsPerMM) / 10000;
 
-        if (count==0 ) { // Start, initialise oldxy
+        if (deg==start ) { // Start, initialise oldxy
             // For 'A' we first move to the stating point
             if (moveTo) {
             ox = 0; 
@@ -107,6 +107,8 @@ void handleArc(char c, String command)
             }
             ox=x;
             oy=y;
+            // Nothing to do
+            continue;
         } 
                                 
         Serial.print("     x=");
@@ -119,8 +121,8 @@ void handleArc(char c, String command)
         Serial.println(oy);
 
         workItem *item = &workItems[count];
-        item->x = x - ox;
-        item->y = y - oy;
+        item->x = (x - ox) ;
+        item->y = (y - oy) ;
         item->ox = x-ox;
         item->oy = y-oy;
 
@@ -134,8 +136,22 @@ void handleArc(char c, String command)
     }
 
     // Attach 'end of input' element
-    workItems[count] = { -1, -1, 0 , 0, 0, TASK_MOVE};
+    workItems[count] = END_MARKER;
     
     printAllWorkItems(workItems);
     startWork();          
+}
+
+// Return sinus value (multiplied by 10000) from progmem
+unsigned long my_sin(int deg) {
+//  Serial.print("my_sin,deg="); Serial.println(deg);
+  unsigned int val = pgm_read_word_near(sin_table + deg);  
+  return val;
+}
+
+// Return cosinus value (multiplied by 10000) from progmem
+unsigned long my_cos(int deg) {
+//  Serial.print("my_cos,deg="); Serial.println(deg);
+  unsigned int val = pgm_read_word_near(sin_table + (90-deg));
+  return val;
 }
