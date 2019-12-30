@@ -20,6 +20,8 @@ Currently implemented commands are
 * i : enable end switches
 * I : disable interrupts
 * z<c><val>: send z-Axis command _c_ with value _val_. See zAxis.ino for more info
+* a<r>[,<start>,<end>] : arc (circle) with radius _r_. If _start_ and _end_ are given, an arc is created. 
+* A<r>[,<start>,<end>] : arch like 'a', but current point is mid-point and not on the arc/circle
 
 == Path definition
 

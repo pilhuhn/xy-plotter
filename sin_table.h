@@ -3,7 +3,10 @@
 
 #include <avr/pgmspace.h>
 
-const uint16t sin[] PROGMEM = {
+
+// Sinus values of 0..90 degrees multiplied
+// by 10000
+const PROGMEM uint16_t sin_table[] = {
      0, // 0 
   175, // 1 
   349, // 2 

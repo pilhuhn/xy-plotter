@@ -1,0 +1,8 @@
+.DS_Store
+.csproject
+..arduino.*
+org.eclipse.cdt.core.prefs
+.settings
+.vscode
+.cproject
+.project

@@ -94,6 +94,22 @@ void enableYInterrupts(int mode) {
 
 }
 
+void printAllWorkItems(workItem *items) {
+#ifdef DEBUG
+  int count = 0;
+  boolean done = false;
+  do {
+    workItem item = items[count];
+    printWorkItem(item);
+    count++;
+    if (item.steps < 0 ) {
+      done = true;
+    }
+  } while (!done);
+
+#endif
+}
+
 void printWorkItem(workItem wItem) {
 #ifdef DEBUG
   Serial.print("D steps=");
