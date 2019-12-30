@@ -20,7 +20,7 @@ void handleArc(char c, String command)
     
     int idx2 = command.indexOf(',',idx+1);
     if (idx2 == -1) {
-        Serial.println("E start and end degrees missing");
+        Serial.println(F("E start and end degrees missing"));
         return;
     } else {
         start = command.substring(idx+1,idx2).toInt();
@@ -75,7 +75,7 @@ void handleArc(char c, String command)
             mcos = my_cos (90 - (deg % 90));              
             break;              
         default:
-            Serial.println("E rror");
+            Serial.println(F("E rror, unknwon quadrant"));
             Serial.flush();
             break;
         }
@@ -123,8 +123,6 @@ void handleArc(char c, String command)
         workItem *item = &workItems[count];
         item->x = (x - ox) ;
         item->y = (y - oy) ;
-        item->ox = x-ox;
-        item->oy = y-oy;
 
         item->steps = max(abs(item->x),abs(item->y));
         item->task = TASK_MOVE;

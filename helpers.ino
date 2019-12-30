@@ -117,11 +117,7 @@ void printWorkItem(workItem wItem) {
   Serial.print(", x=");
   Serial.print(wItem.x, DEC);
   Serial.print(", y=");
-  Serial.print(wItem.y, DEC);
-  Serial.print(", ox=");
-  Serial.print(wItem.ox, DEC);
-  Serial.print(", oy=");
-  Serial.println(wItem.oy, DEC);
+  Serial.println(wItem.y, DEC);
 
   Serial.flush();
 #endif

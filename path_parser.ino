@@ -57,7 +57,7 @@ void parsePath(String path) {
     } while (pos > 0);
   }
 
-  workItems[count] = { -1, -1, 0 , 0, 0, TASK_MOVE};
+  workItems[count] = END_MARKER;
 
 #ifdef DEBUG
   long t2 = millis();
@@ -109,8 +109,6 @@ void parseToken(String token, workItem *wItem) {
     curPos = pos + 1;
   } while (pos > 0);
 
-  wItem->ox = x;
-  wItem->oy = y;
   wItem->x = x * stepsPerMM;
   wItem->y = y * stepsPerMM;
 

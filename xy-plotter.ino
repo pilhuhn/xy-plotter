@@ -50,15 +50,13 @@ struct workItem {
   long steps;  // total number of steps for this item
   long x;      // steps in x direction
   long y;      // steps in y direction
-  long ox; // original x from command
-  long oy; // original y from command
   byte task;
 };
 
 workItem *workItems;
 int currentItem = 0;
 
-#define END_MARKER { -1, -1, 0 , 0, 0, TASK_MOVE}
+#define END_MARKER { -1, -1, -1 , TASK_MOVE}
 
 int stepsPerMM = DEFAULT_STEPS_PER_MM;
 String command;
