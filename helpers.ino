@@ -1,5 +1,6 @@
 
 #include "helpers.h"
+#include "workitem.h"
 
 void enableMotors() {
   digitalWrite(enPin1, LOW);
@@ -112,12 +113,13 @@ void printAllWorkItems(workItem *items) {
 
 void printWorkItem(workItem wItem) {
 #ifdef DEBUG
-  Serial.print("D steps=");
+  Serial.print("D workItem{steps=");
   Serial.print(wItem.steps, DEC);
   Serial.print(", x=");
   Serial.print(wItem.x, DEC);
   Serial.print(", y=");
-  Serial.println(wItem.y, DEC);
+  Serial.print(wItem.y, DEC);
+  Serial.println("}");
 
   Serial.flush();
 #endif

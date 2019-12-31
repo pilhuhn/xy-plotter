@@ -1,3 +1,6 @@
+
+#include "workitem.h"
+
 /*
  * Deal with arcs/circles
 */
@@ -6,17 +9,18 @@ void handleArc(char c, String command)
     boolean moveTo = false;
 
     if (c == 'A') {
-    moveTo = true;
+        moveTo = true;
     }
+
     // arc radius[,start,end]  start,end in degree (0-360)
     int idx = command.indexOf(',',1); // Check for 1st ,
     int radius;
     int start = 0;
     int end= 360;
     if (idx == -1) {
-    radius = command.substring(1).toInt();
+        radius = command.substring(1).toInt();
     } else {
-    radius = command.substring(1,idx).toInt();
+        radius = command.substring(1,idx).toInt();
     
     int idx2 = command.indexOf(',',idx+1);
     if (idx2 == -1) {
@@ -29,7 +33,9 @@ void handleArc(char c, String command)
     }
     // Normalize to 0..360 deg
     start = start %360;
-    end = end %360;  // TODO full circle needs the last step, that gets removed here
+    if (end>360) {
+        end = end %360;  // TODO full circle needs the last step, that gets removed here
+    }   
     Serial.print("D arc, radius= ");
     Serial.print(radius);
     Serial.print(", start= ");
@@ -45,7 +51,6 @@ void handleArc(char c, String command)
     count=abs(end-start) + (moveTo ? 4 :1 ); 
     Serial.print("D arc, items to reserve ");
     Serial.println(count, DEC);
-    workItems = new workItem[count]; 
     count = 0;
     
     // We start the arc at the current position
@@ -81,16 +86,18 @@ void handleArc(char c, String command)
         }
         
 #ifdef DEBUG            
-        Serial.flush();
-        Serial.println();
-        Serial.print("     deg= ");
-        Serial.print(deg, DEC);
-        Serial.print("  deg/90= ");
-        Serial.print(deg/90, DEC);
-        Serial.print("   msin= ");
-        Serial.print(msin,DEC);
-        Serial.print("   mcos= ");
-        Serial.print(mcos,DEC);
+    if (verbose) {
+            Serial.flush();
+            Serial.println();
+            Serial.print("     deg= ");
+            Serial.print(deg, DEC);
+            Serial.print("  deg/90= ");
+            Serial.print(deg/90, DEC);
+            Serial.print("   msin= ");
+            Serial.print(msin,DEC);
+            Serial.print("   mcos= ");
+            Serial.print(mcos,DEC);
+        }
 #endif
 
         // Creates the absolute x/y position
@@ -110,15 +117,19 @@ void handleArc(char c, String command)
             // Nothing to do
             continue;
         } 
-                                
-        Serial.print("     x=");
-        Serial.print(x);
-        Serial.print(",  y=");
-        Serial.print(y);
-        Serial.print("     ox=");
-        Serial.print(ox);
-        Serial.print(",  oy=");
-        Serial.println(oy);
+
+#ifdef DEBUG                                
+        if (verbose) {
+            Serial.print("     x=");
+            Serial.print(x);
+            Serial.print(",  y=");
+            Serial.print(y);
+            Serial.print("     ox=");
+            Serial.print(ox);
+            Serial.print(",  oy=");
+            Serial.println(oy);
+        }
+#endif        
 
         workItem *item = &workItems[count];
         item->x = (x - ox) ;
@@ -129,15 +140,26 @@ void handleArc(char c, String command)
         
         ox = x;
         oy = y;
-        printWorkItem(workItems[count]);
+#ifdef DEBUG        
+        if (verbose) {
+            printWorkItem(workItems[count]);
+        }
+#endif        
         count++;
     }
 
+    
     // Attach 'end of input' element
     workItems[count] = END_MARKER;
-    
-    printAllWorkItems(workItems);
+        
     startWork();          
+}
+
+void waitABit() {
+    
+    while (!done) { // global var that the oneStep sets to true once done.
+        delay(2);    
+    }
 }
 
 // Return sinus value (multiplied by 10000) from progmem

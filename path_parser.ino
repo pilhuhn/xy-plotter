@@ -31,7 +31,7 @@ void parsePath(String path) {
   Serial.print("D Segments: ");
   Serial.println( segments, DEC);
   // allocate memory
-  workItems = new workItem[segments + 1];
+  // workItems = new workItem[segments + 1];
 
   // Now parse the segments and create work items
   curPos = 0;
@@ -69,20 +69,23 @@ void parsePath(String path) {
 
 }
 
+/*
+ * Parse a single token of the path and put it into the passed
+ * workItem
+ */
 void parseToken(String token, workItem *wItem) {
   long x = 0;
   long y = 0;
 
   int pos ;
   int curPos = 0;
-  String sub = token;
 
 #ifdef DEBUG
   unsigned long t1 = micros();
 #endif
 
   do {
-    char v = sub.charAt(curPos);
+    char v = token.charAt(curPos);
     curPos++;
     long val;
     pos = token.indexOf(' ', curPos);
@@ -102,7 +105,7 @@ void parseToken(String token, workItem *wItem) {
     } else if (v == 'D') {
       wItem->task = TASK_PEN_DOWN;
     } else {
-      Serial.print("E  unknown code ");
+      Serial.print(F("E  unknown code "));
       Serial.println(v);
       Serial.flush();
     }
@@ -117,13 +120,18 @@ void parseToken(String token, workItem *wItem) {
 #ifdef DEBUG
   unsigned long t2 = micros();
 
-  Serial.print("D     parseToken: ");
+  Serial.print(F("D     parseToken: (us) "));
   Serial.println(t2 - t1, DEC);
 #endif
 
   printWorkItem(*wItem);
 }
 
+/*
+ * Find up to ten path segments and pass them to the 
+ * path parser. 
+ * The pointer into the input is then forwarded.
+ */ 
 String findTen() {
   int curr = pathPointer;
   int count = 0;
@@ -132,7 +140,7 @@ String findTen() {
       count++;
     }
     if (count == 10) {
-      Serial.print("D f10: pp: ");
+      Serial.print(F("D f10: path pointer: "));
       Serial.println(i, DEC);
       Serial.flush();
       pathPointer = i + 1;
@@ -147,23 +155,3 @@ String findTen() {
   return command.substring(curr);
 }
 
-#ifdef DEBUG
-void d(String path) {
-  Serial.println(" ---> " + path);
-  Serial.flush();
-  parsePath(path);
-  //  startWork();
-  int i = 0;
-  while (workItems[i].steps > 0) {
-    printWorkItem(workItems[i]);
-    i++;
-  }
-  delete[] workItems;
-  Serial.println("---------------------");
-  Serial.flush();
-}
-#else
-void d(String path)
-{
-}
-#endif

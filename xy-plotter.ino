@@ -10,6 +10,7 @@
 #include "TimerOne.h"
 #include "helpers.h"
 #include "sin_table.h"
+#include "workitem.h"
 
 // Stepper 1 = z-axis = Motor 1 on shield
 // See zAxis.ino
@@ -25,7 +26,7 @@
 #define dirPin2 13
 
 // Servo
-#define SERVO_PIN PIN_A1
+#define SERVO_PIN PIN_A1 // Logical pin , Servo port on motor 4 of Fabscan shield, pin 55 on mega
 #define PEN_UP 10
 #define PEN_DOWN 70
 
@@ -45,15 +46,7 @@
 #define Y_LEFT_HIT 8
 
 
-// A work item is a single "relative" line, resolved into steps
-struct workItem {
-  long steps;  // total number of steps for this item
-  long x;      // steps in x direction
-  long y;      // steps in y direction
-  byte task;
-};
-
-workItem *workItems;
+workItem *workItems = new workItem[361];
 int currentItem = 0;
 
 #define END_MARKER { -1, -1, -1 , TASK_MOVE}
@@ -76,25 +69,31 @@ volatile boolean xHit = false;
 volatile boolean yHit = false;
 volatile unsigned char hitmask = 0x0;
 volatile char hitMsg = '\0';
+boolean verbose = true;
 
 char dirPins[] = {7, 13};
 char stepPins[] = {6, 12};
 
+/*
+ * One time setup routine called from the Arduino framework
+ */ 
 void setup() {
 
   Serial.begin(115200);
 
+  // setup Motor 2 (x-axis)
   pinMode(enPin1, OUTPUT);
   pinMode(stepPin1, OUTPUT);
   pinMode(dirPin1, OUTPUT);
   digitalWrite(enPin1, LOW);
 
+  // setup Motor 3 (z-axis)
   pinMode(enPin2, OUTPUT);
   pinMode(stepPin2, OUTPUT);
   pinMode(dirPin2, OUTPUT);
   digitalWrite(enPin2, LOW);
 
-  setupZAxis();
+//  setupZAxis();
 
   digitalWrite(dirPin1, HIGH);
   digitalWrite(enPin1, HIGH); // Disable stepper
@@ -108,15 +107,16 @@ void setup() {
     pinMode(i, INPUT_PULLUP);
   }
 
-  // TODO move Panic button to other pin
+  // TODO move Panic button to other pin as it clashes
+  // with stepper motor 1 (z-Axis)
     pinMode(2, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(2), panic, CHANGE);
 
 
   // Attach to servo and raise pen
   // TODO rewrite with z-Stepper
-  //  pinMode(SERVO_PIN, OUTPUT);
-  //  servoMove(SERVO_PIN, PEN_UP);
+  pinMode(SERVO_PIN, OUTPUT);
+  servoMove(SERVO_PIN, PEN_UP);
 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
@@ -129,6 +129,10 @@ void setup() {
 
 }
 
+/*
+ * Interrupt callback for the 'panic' button.
+ * Stops the activity of the motors
+ */ 
 void panic() {
   Timer1.stop();
   println("STOPPED");
@@ -139,19 +143,22 @@ void panic() {
 
 long dx, dy;
 
-// Does the work and is driven from the
-// timer interrrupts.
-// This function is called each time the Time1
-// fires.
+/*
+ * Does the work and is driven from the
+ * timer interrrupts.
+ * This function is called each time the Timer1
+ * fires.
+ * See #startWork() which initialises motors+interrupts.
+ */ 
 void oneStep() {
   boolean doX, doY;
 
   if (xHit || yHit)  {
-    println("One step, hit a switch");
+    println(F("D One step, hit a switch"));
     servoMove(SERVO_PIN, PEN_UP);
     Timer1.stop();
     Timer1.detachInterrupt();
-    delete[] workItems;
+    // delete[] workItems;
     done = true;
     return;
   }
@@ -174,13 +181,15 @@ void oneStep() {
   if (totalSteps <= 0 ) {
     Timer1.stop();
     Timer1.detachInterrupt();
-    delete[] workItems;
+    // delete[] workItems;
     done = true;
     return;
   }
 
   if (stepsDone == 0) {
-    printWorkItem(wItem);
+    if (verbose) {
+      printWorkItem(wItem);
+    }
     setDirection(wItem);
     dx = abs(wItem.x);
     dy = -abs(wItem.y);
@@ -268,7 +277,11 @@ void startWork() {
 
 
 
-
+/*
+ * Main loop as defined by Arduino. This
+ * basically reads input commands over serial
+ * and executes them in a row.s
+ */ 
 void loop() {
 
   if (Serial.available() > 0) {
@@ -310,23 +323,15 @@ void loop() {
           {
             String in = command.substring(1);
             in.replace('\n', '|');
-            parsePath(in);
+            pathPointer = 1; // comand[0] is 's', path starts at 1
+            String path = findTen();
+            parsePath(path);
             startWork();
           }
           break;
         case 'Q':
           // Emergency shutdown for manual operation
           panic();
-          break;
-        case 'T': {
-            // Split the path in smaller items and handle them one at a time
-            command.replace('\n', '|');
-            pathPointer = 1; // comand[0] is 'T, path starts at 1
-            String path = findTen();
-            Serial.println(path);
-            parsePath(path);
-            startWork();
-          }
           break;
         case 'C': {
             continuousMode = true;
@@ -367,13 +372,17 @@ void loop() {
           break;
         case 'v': {
             int val = command.substring(1).toInt();
-            //          penServo.write(val);
             servoMove(SERVO_PIN, val);
             break;
           }
         case 'i':
           enableEndSwitches();
           break;
+        case 'V':
+          verbose = !verbose;
+          Serial.print(F("Verbose is "));
+          Serial.println(verbose ? "on" : "off");
+          Serial.flush();  
         case 'I': {
             disableXInterrupts();
             disableYInterrupts();

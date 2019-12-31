@@ -15,8 +15,8 @@ Currently implemented commands are
 * d : pen down, lowers the pen so that it draws
 * r<val>: set resolution to _val_ steps per mm. Default is 160steps per mm
 * Q : emergency stop in manual mode
-* T : some path debugging
 * v<val> : set servo at passed int _val_ue
+* V : toggle verbose mode
 * i : enable end switches
 * I : disable interrupts
 * z<c><val>: send z-Axis command _c_ with value _val_. See zAxis.ino for more info
