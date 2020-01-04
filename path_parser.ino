@@ -12,6 +12,9 @@
 void parsePath(String path) {
 
 #ifdef DEBUG
+  Serial.print("Parse Path input ");
+  Serial.println(path);
+  Serial.flush();
   long t1 = millis();
 #endif
   path.trim();
@@ -30,12 +33,10 @@ void parsePath(String path) {
 
   Serial.print("D Segments: ");
   Serial.println( segments, DEC);
-  // allocate memory
-  // workItems = new workItem[segments + 1];
 
   // Now parse the segments and create work items
   curPos = 0;
-  int count = 0;
+  int itemCount = 0;
   if (segments > 0) {
     do {
       String token;
@@ -51,13 +52,19 @@ void parsePath(String path) {
       Serial.println("<<");
       Serial.flush();
 #endif
-      parseToken(token, &workItems[count++]);
+      if (token.startsWith("a") || token.startsWith("A") ) {
+        handleArc(token);
+        return; // we get this as single token, so we are done here.
+      } else {
+        parseToken(token, &workItems[itemCount]);
+        itemCount++;
+      }
       tokenCount++;
       curPos = pos + 1; // skip over |
     } while (pos > 0);
   }
 
-  workItems[count] = END_MARKER;
+  workItems[itemCount] = END_MARKER;
 
 #ifdef DEBUG
   long t2 = millis();
@@ -124,31 +131,64 @@ void parseToken(String token, workItem *wItem) {
   Serial.println(t2 - t1, DEC);
 #endif
 
-  printWorkItem(*wItem);
+  if (verbose) {
+    printWorkItem(*wItem);
+  }
 }
 
 /*
- * Find up to ten path segments and pass them to the 
+ * Find up to 50 path segments and pass them to the 
  * path parser. 
  * The pointer into the input is then forwarded.
  */ 
-String findTen() {
+String preParse() {
+
   int curr = pathPointer;
-  int count = 0;
+  int itemCount = 0;
+  boolean aFound = false;
+  
   for (unsigned int i = pathPointer; i < command.length(); i++) {
     if (command.charAt(i) == '|') {
-      count++;
+      itemCount++;
     }
-    if (count == 10) {
-      Serial.print(F("D f10: path pointer: "));
+    if (command.charAt(i) == 'a' || command.charAt(i) == 'A') {
+      // a/A is for arc/circles and creates its own workItems, so 
+      // we need to stop here, let work be done, then do the a command
+      // and then continue
+      if (itemCount != 0) {
+        aFound = true;        
+      } else {
+        int ePos = i;
+        while (command.charAt(ePos) != '|' && ePos < command.length()) {
+          ePos++;
+        }
+        String aCommand = command.substring(i,ePos);
+        Serial.print("D Found A >>" );
+        Serial.println(aCommand);
+        Serial.flush();
+        pathPointer = ePos +1 ;
+        return aCommand;
+      }
+    }
+    
+    if (itemCount == 50) {
+      Serial.print(F("D preParse: path pointer:"));
       Serial.println(i, DEC);
       Serial.flush();
-      pathPointer = i + 1;
       return command.substring(curr, i);
     }
+    if (aFound) {
+      Serial.print("aFound, returning ");      
+      String tmp = command.substring(curr,i-1);
+      pathPointer = i;
+      Serial.println(tmp);
+      Serial.flush();
+      return tmp;
+
+    }
   }
-  Serial.print("D f10: count: ");
-  Serial.println(count, DEC);
+  Serial.print("D preParse: itemCount: ");
+  Serial.println(itemCount, DEC);
   Serial.flush();
   // We did not hit 10, so return the whole string's end
   pathPointer = -1; // Mark end

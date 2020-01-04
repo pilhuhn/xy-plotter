@@ -119,6 +119,8 @@ void printWorkItem(workItem wItem) {
   Serial.print(wItem.x, DEC);
   Serial.print(", y=");
   Serial.print(wItem.y, DEC);
+  Serial.print(", task=");
+  Serial.print(wItem.task);
   Serial.println("}");
 
   Serial.flush();

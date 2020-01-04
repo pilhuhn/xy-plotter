@@ -34,13 +34,18 @@ The format follows:
     XCHAR ::= 'X'
     YCHAR ::= 'Y'
     MINUS ::= '-'
+    COMMA ::= ','
     NUM ::= ['0'-'9']
     PEN_UP ::= 'U'
     PEN_DOWN ::= 'D'
 
+    radius ::= NUM+
+    start :: NUM+
+    end :: NUM+
+    arc ::= ('A' | 'a') radius (COMMA start COMMA end)?
     item ::= (XCHAR | YCHAR) MINUS? NUM+
     move ::= item (SPACE item)
-    segment ::= move | PEN_UP | PEN_DOWN
+    segment ::= move | arc | PEN_UP | PEN_DOWN
     path ::= segment ( PIPE segment)*
 ----
 

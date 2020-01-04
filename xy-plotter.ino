@@ -176,16 +176,18 @@ void oneStep() {
     return;
   }
 
-  // This must be TASK_MOVE
-  long totalSteps = wItem.steps;
-  if (totalSteps <= 0 ) {
+  // From here on:  TASK_MOVE
+
+  // wItem.steps <= 0 means END_MARKER, so we can stop with this
+  // set of work items
+  if (wItem.steps <= 0 ) {
     Timer1.stop();
     Timer1.detachInterrupt();
-    // delete[] workItems;
     done = true;
     return;
   }
 
+  // No end maker? Then let's move
   if (stepsDone == 0) {
     if (verbose) {
       printWorkItem(wItem);
@@ -280,7 +282,7 @@ void startWork() {
 /*
  * Main loop as defined by Arduino. This
  * basically reads input commands over serial
- * and executes them in a row.s
+ * and executes them in a row.
  */ 
 void loop() {
 
@@ -304,7 +306,7 @@ void loop() {
       }
       else {
         pathPointer = 0;
-        String path = findTen();
+        String path = preParse();
         parsePath(path);
         startWork();
       }
@@ -324,7 +326,7 @@ void loop() {
             String in = command.substring(1);
             in.replace('\n', '|');
             pathPointer = 1; // comand[0] is 's', path starts at 1
-            String path = findTen();
+            String path = preParse();
             parsePath(path);
             startWork();
           }
@@ -382,7 +384,8 @@ void loop() {
           verbose = !verbose;
           Serial.print(F("Verbose is "));
           Serial.println(verbose ? "on" : "off");
-          Serial.flush();  
+          Serial.flush();
+          break;
         case 'I': {
             disableXInterrupts();
             disableYInterrupts();
@@ -468,7 +471,7 @@ void loop() {
     // command string is very long, but we can only
     // do so much at a time.
     if (pathPointer > 1) {
-      String path = findTen();
+      String path = preParse();
       Serial.println(path);
       parsePath(path);
       startWork();

@@ -1,6 +1,11 @@
 
 #include "workitem.h"
 
+void handleArc(String command) {
+    return handleArc(command.charAt(0),command);
+}
+
+
 /*
  * Deal with arcs/circles
 */
@@ -147,7 +152,6 @@ void handleArc(char c, String command)
 #endif        
         count++;
     }
-
     
     // Attach 'end of input' element
     workItems[count] = END_MARKER;
