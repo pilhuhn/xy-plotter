@@ -69,7 +69,7 @@ volatile boolean xHit = false;
 volatile boolean yHit = false;
 volatile unsigned char hitmask = 0x0;
 volatile char hitMsg = '\0';
-boolean verbose = true;
+boolean verbose = false;
 
 char dirPins[] = {7, 13};
 char stepPins[] = {6, 12};
