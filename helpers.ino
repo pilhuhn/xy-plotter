@@ -43,6 +43,7 @@ void servoMove(int servo, int pos) {
     digitalWrite(servo, LOW);
     delayMicroseconds(20000);
   }
+  penIsUp = (pos == PEN_UP);
 }
 
 void println(String text) {

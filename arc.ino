@@ -12,6 +12,7 @@ void handleArc(String command) {
 void handleArc(char c, String command)
 {
     boolean moveTo = false;
+    boolean oldPenStateIsUp = penIsUp; // remember old pen position for 'A' mode.
 
     if (c == 'A') {
         moveTo = true;
@@ -29,7 +30,7 @@ void handleArc(char c, String command)
     
     int idx2 = command.indexOf(',',idx+1);
     if (idx2 == -1) {
-        Serial.println(F("E start and end degrees missing"));
+        Serial.println(F("E start and/or end degrees missing"));
         return;
     } else {
         start = command.substring(idx+1,idx2).toInt();
@@ -49,21 +50,27 @@ void handleArc(char c, String command)
     Serial.println(end);
 
     signed long ox, oy;
+    signed long save_x, save_y;
     int count =0;
+    int stepsToExecute = 0;
+    short dir = (start < end ) ? 1 : -1 ;
+    int deg = start;
     
-    // reserve memory
     //  with 'A' reserve for penup/down + initial move
-    count=abs(end-start) + (moveTo ? 4 :1 ); 
-    Serial.print("D arc, items to reserve ");
-    Serial.println(count, DEC);
-    count = 0;
+    stepsToExecute=abs(end-start) + (moveTo ? 4 :1 ); 
+    Serial.print(F("D arc, steps to execute "));
+    Serial.print(stepsToExecute, DEC);
+    Serial.print(F(" direction="));
+    Serial.print(dir, DEC);
+    Serial.print(F(", startDeg ="));
+    Serial.println(deg, DEC);
     
     // We start the arc at the current position
     // TODO: decide (via param) if previous point is middle point
-    //    or start point        
-    // Loop 
-    for (int deg = start; deg <= end ; deg++) {  // TODO handle direction
-        // TODO handle negative values and start > end and values > 360            
+    //    or start point
+
+    // Loop. Run variable is the number of the current step.
+    for (int i = 0; i < stepsToExecute ; i++) { 
 
         // determine x and y depending on quadrant
         signed long msin, mcos;
@@ -85,7 +92,10 @@ void handleArc(char c, String command)
             mcos = my_cos (90 - (deg % 90));              
             break;              
         default:
-            Serial.println(F("E rror, unknwon quadrant"));
+            Serial.print(F("E rror, unknwon quadrant "));
+            Serial.print(deg/90);
+            Serial.print(" for " );
+            Serial.println(deg);
             Serial.flush();
             break;
         }
@@ -94,7 +104,7 @@ void handleArc(char c, String command)
     if (verbose) {
             Serial.flush();
             Serial.println();
-            Serial.print("     deg= ");
+            Serial.print("D     deg= ");
             Serial.print(deg, DEC);
             Serial.print("  deg/90= ");
             Serial.print(deg/90, DEC);
@@ -110,17 +120,35 @@ void handleArc(char c, String command)
         signed long x = ( radius * mcos * stepsPerMM) / 10000;
         signed long y = ( radius * msin * stepsPerMM) / 10000;
 
-        if (deg==start ) { // Start, initialise oldxy
+        if (i==0 ) { // Start, initialise oldxy
             // For 'A' we first move to the stating point
             if (moveTo) {
-            ox = 0; 
-            oy = 0;
-            // TODO add penup/down
+                ox = 0; 
+                oy = 0;
+                // penup
+                workItem *item = &workItems[count];
+                item->task = TASK_PEN_UP;
+                count++;
+                
+                // move from middle point to radius
+                item = &workItems[count];
+                item->task = TASK_MOVE;
+                item->x = x;
+                save_x = x;
+                item->y = y;
+                save_y = y;   
+                item->steps = max(abs(x),abs(y));    
+                count++;
+
+                // pen down
+                item = &workItems[count];
+                item->task = TASK_PEN_DOWN;
+                count++;
+            
             }
-            ox=x;
-            oy=y;
+                ox=x;
+                oy=y;
             // Nothing to do
-            continue;
         } 
 
 #ifdef DEBUG                                
@@ -136,25 +164,64 @@ void handleArc(char c, String command)
         }
 #endif        
 
-        workItem *item = &workItems[count];
-        item->x = (x - ox) ;
-        item->y = (y - oy) ;
+        if (i != 0) {
+            workItem *item = &workItems[count];
+            item->x = (x - ox) ;
+            item->y = (y - oy) ;
 
-        item->steps = max(abs(item->x),abs(item->y));
-        item->task = TASK_MOVE;
-        
-        ox = x;
-        oy = y;
+            item->steps = max(abs(item->x),abs(item->y));
+            item->task = TASK_MOVE;
+            
+            ox = x;
+            oy = y;
 #ifdef DEBUG        
-        if (verbose) {
-            printWorkItem(workItems[count]);
-        }
+            if (verbose) {
+                printWorkItem(workItems[count]);
+            }
 #endif        
-        count++;
+            count++;
+        }
+        deg = deg + dir;
     }
     
+    // if A then move back to middle point
+    if (moveTo) {
+        workItem *item = &workItems[count];
+        item->task = TASK_PEN_UP;
+        item->x = 0;
+        item->y = 0;
+        item->steps = 0;
+        count++;
+        
+        // move from middle point to radius
+        item = &workItems[count];
+        item->task = TASK_MOVE;
+        item->x = -save_x;
+        item->y = -save_y;
+        item->steps = max(abs(save_x),abs(save_y));    
+        count++;
+
+        // pen down - we only lower when the pen was
+        // down before doing the arc command in moveTo mode
+        if (!oldPenStateIsUp) {
+            item = &workItems[count];
+            item->task = TASK_PEN_DOWN;
+            item->x = 0;
+            item->y = 0;
+            item->steps = 0;
+
+            count++;
+        }
+
+    }
+
     // Attach 'end of input' element
     workItems[count] = END_MARKER;
+
+    if (verbose) {
+        Serial.println("D arc -- workitems --");
+        printAllWorkItems(workItems);
+    }
         
     startWork();          
 }

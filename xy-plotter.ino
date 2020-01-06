@@ -46,7 +46,7 @@
 #define Y_LEFT_HIT 8
 
 
-workItem *workItems = new workItem[361];
+workItem *workItems = new workItem[370];
 int currentItem = 0;
 
 #define END_MARKER { -1, -1, -1 , TASK_MOVE}
@@ -70,6 +70,8 @@ volatile boolean yHit = false;
 volatile unsigned char hitmask = 0x0;
 volatile char hitMsg = '\0';
 boolean verbose = false;
+
+boolean penIsUp;
 
 char dirPins[] = {7, 13};
 char stepPins[] = {6, 12};
@@ -123,7 +125,7 @@ void setup() {
 
   Serial.println();
   Serial.flush();
-  Serial.println("OK Setup done");
+  Serial.println(F("OK Setup done"));
   Serial.flush();
 
 
@@ -139,6 +141,7 @@ void panic() {
   done = true;
   xHit = true;
   yHit = true;
+  continuousMode = false;
 }
 
 long dx, dy;
