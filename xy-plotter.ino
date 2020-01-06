@@ -382,10 +382,15 @@ void loop() {
           break;
         case 'V':
           verbose = !verbose;
-          Serial.print(F("Verbose is "));
+          Serial.print(F("OK  Verbose is "));
           Serial.println(verbose ? "on" : "off");
           Serial.flush();
           break;
+        case 'R': 
+          dryRun = !dryRun;
+          Serial.print(F("OK DryRun is "));
+          Serial.println(dryRun ? "on" : "off");
+          Serial.flush();
         case 'I': {
             disableXInterrupts();
             disableYInterrupts();

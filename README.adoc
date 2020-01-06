@@ -17,6 +17,7 @@ Currently implemented commands are
 * Q : emergency stop in manual mode
 * v<val> : set servo at passed int _val_ue
 * V : toggle verbose mode (default off)
+* R : toggle dry run (default off)
 * i : enable end switches
 * I : disable interrupts
 * z<c><val>: send z-Axis command _c_ with value _val_. See zAxis.ino for more info
