@@ -394,6 +394,7 @@ void loop() {
           Serial.print(F("OK DryRun is "));
           Serial.println(dryRun ? "on" : "off");
           Serial.flush();
+          break;
         case 'I': {
             disableXInterrupts();
             disableYInterrupts();
@@ -424,7 +425,7 @@ void loop() {
           handleArc(c,command);
           break;
         default: {
-            Serial.print("Unknown command >>");
+            Serial.print("E Unknown command >>");
             Serial.print(c);
             Serial.println("<<");
             Serial.flush();
@@ -549,4 +550,3 @@ args optarg (String text) {
 
   return a;
 }
-
