@@ -30,6 +30,10 @@ void setDirection(workItem item) {
 }
 
 void servoMove(int servo, int pos) {
+  if (dryRun) {
+    return;
+  }
+  
   int pwm;
   // Create millis for HIGH duration
   pwm = (pos * 11) + 544;
